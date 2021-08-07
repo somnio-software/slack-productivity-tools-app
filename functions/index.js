@@ -1,22 +1,19 @@
 /* eslint-disable require-jsdoc */
 /* eslint-disable indent */
 const functions = require("firebase-functions");
+const slackToken = require("./keys.json")["slack-token"]; //xoxp slack app token
 const { WebClient } = require("@slack/web-api");
 
-const token =
-	"xoxp-854267239954-869257735894-2339908881860-4e92b8659933cf82df0223e5c781e2b7";
-
-// // https://firebase.google.com/docs/functions/write-firebase-functions
 exports.setFocus = functions.https.onRequest(async (request, response) => {
-	const web = new WebClient(token);
+	const web = new WebClient(slackToken);
 	const text = request.body.text || "for 1 hour";
 	const timeArr = text.split("for ");
 	const time = timeArr.length > 1 ? timeArr[1] : "1 hour";
-	functions.logger.info("Hello focus!", { structuredData: true, request });
-	functions.logger.info("Hello text!", text);
+	functions.logger.info("Time: ", text);
 	const res = await web.dnd.setSnooze({ num_minutes: time });
-	functions.logger.info("Hello Result!", res);
+	functions.logger.info("Snoose set: ", res);
 
+	// TODO: To be implemented: Don't create reminders, just a message from the app
 	// const user = await web.users.identity({});
 	// functions.logger.info("Hello USer!", user);
 
@@ -24,16 +21,18 @@ exports.setFocus = functions.https.onRequest(async (request, response) => {
 	//     text: "Focus off",
 	// 	channel: user.id,
 	// });
-	const res2 = await web.reminders.add({
+
+	const reminderRes = await web.reminders.add({
 		text: "Focus off",
 		time: time,
 	});
+	functions.logger.info("Reminder created: ", reminderRes);
 	const profile = {
 		status_text: `Focusing ${text}`,
 		status_emoji: ":nerd_face:",
 		status_expiration: res.snooze_endtime,
 	};
-	functions.logger.info("Hello profile!", profile);
+	functions.logger.info("Profile updated: ", profile);
 	await web.users.profile.set({ profile });
 	response.send(
 		`
